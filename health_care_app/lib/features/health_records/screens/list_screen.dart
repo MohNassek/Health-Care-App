@@ -96,7 +96,25 @@ class _ListScreenState extends State<ListScreen> {
     }
   }
 
+  String _formatDate(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+
+  bool _isTodayRecord(HealthRecord record) {
+    final today = DateTime.now();
+    final todayStr = _formatDate(today);
+    return record.date == todayStr;
+  }
+
   Future<void> _editRecord(HealthRecord record) async {
+    // Only allow editing today's record
+    if (!_isTodayRecord(record)) {
+      SnackbarHelper.showWarning(
+        context,
+        'You can only edit today\'s record. Past records cannot be modified.',
+      );
+      return;
+    }
+
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => AddEditScreen(record: record)),
@@ -213,16 +231,28 @@ class _ListScreenState extends State<ListScreen> {
         ),
         child: Dismissible(
           key: Key('record_${record.id}'),
-          direction: DismissDirection.horizontal,
-          background: Container(
-            decoration: BoxDecoration(
-              color: AppColors.success,
-              borderRadius: BorderRadius.circular(Dimens.radiusLarge),
-            ),
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.only(left: Dimens.paddingLarge),
-            child: const Icon(Icons.edit, color: Colors.white, size: 28),
-          ),
+          direction: _isTodayRecord(record)
+              ? DismissDirection.horizontal
+              : DismissDirection.endToStart, // Only allow delete swipe for non-today records
+          background: _isTodayRecord(record)
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: Dimens.paddingLarge),
+                  child: const Icon(Icons.edit, color: Colors.white, size: 28),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: Dimens.paddingLarge),
+                  child: const Icon(Icons.lock_outline, color: Colors.white, size: 28),
+                ),
           secondaryBackground: Container(
             decoration: BoxDecoration(
               color: AppColors.error,
@@ -233,14 +263,24 @@ class _ListScreenState extends State<ListScreen> {
             child: const Icon(Icons.delete, color: Colors.white, size: 28),
           ),
           onDismissed: (direction) {
-            if (direction == DismissDirection.startToEnd) {
+            if (direction == DismissDirection.startToEnd && _isTodayRecord(record)) {
               _editRecord(record);
             } else if (direction == DismissDirection.endToStart) {
               _deleteRecord(record);
             }
           },
           confirmDismiss: (direction) async {
-            if (direction == DismissDirection.endToStart) {
+            if (direction == DismissDirection.startToEnd) {
+              // Only allow edit swipe for today's record
+              if (!_isTodayRecord(record)) {
+                SnackbarHelper.showWarning(
+                  context,
+                  'You can only edit today\'s record.',
+                );
+                return false;
+              }
+              return true;
+            } else if (direction == DismissDirection.endToStart) {
               return await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -261,7 +301,7 @@ class _ListScreenState extends State<ListScreen> {
                   ) ??
                   false;
             }
-            return true;
+            return false;
           },
           child: InkWell(
             onTap: () => _editRecord(record),
@@ -276,16 +316,54 @@ class _ListScreenState extends State<ListScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.calendar_today, size: 18, color: AppColors.primary),
+                          Icon(
+                            Icons.calendar_today,
+                            size: 18,
+                            color: _isTodayRecord(record)
+                                ? AppColors.primary
+                                : Colors.grey.shade600,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             record.date,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textPrimary,
                             ),
                           ),
+                          if (_isTodayRecord(record)) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.edit,
+                                    size: 12,
+                                    color: AppColors.success,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'Editable',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       if (_isFiltered && _filterDate == record.date)
