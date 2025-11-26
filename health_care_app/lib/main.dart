@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'features/health_records/health_provider.dart';
-import 'features/health_records/screens/dashboard_screen.dart';
+import 'screens/main_navigation_screen.dart';
 import 'features/health_records/screens/add_edit_screen.dart';
 import 'utils/colors.dart';
 import 'utils/dimens.dart';
@@ -142,7 +142,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         routes: {
-          '/': (_) => const DashboardScreen(),
+          '/': (_) => const MainNavigationScreen(),
           '/add': (_) => const AddEditScreen(),
         },
       ),

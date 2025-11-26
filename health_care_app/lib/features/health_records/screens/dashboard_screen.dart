@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../health_provider.dart';
 import '../health_record.dart';
-import 'list_screen.dart';
 import 'add_edit_screen.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimens.dart';
@@ -49,18 +48,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('HealthMate Dashboard'),
+        title: const Text('Today\'s Record'),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ListScreen()),
-            ),
-            tooltip: 'View All Records',
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
