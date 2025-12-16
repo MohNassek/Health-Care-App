@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../utils/dimens.dart';
 import '../utils/colors.dart';
 
@@ -8,6 +9,7 @@ class CustomTextField extends StatelessWidget {
   final IconData? prefixIcon;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final bool readOnly;
   final VoidCallback? onTap;
   final String? helperText;
@@ -24,6 +26,7 @@ class CustomTextField extends StatelessWidget {
     this.onTap,
     this.helperText,
     this.enabled = true,
+    this.inputFormatters,
   });
 
   @override
@@ -34,6 +37,7 @@ class CustomTextField extends StatelessWidget {
       onTap: onTap,
       validator: validator,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       enabled: enabled,
       decoration: InputDecoration(
         labelText: label,

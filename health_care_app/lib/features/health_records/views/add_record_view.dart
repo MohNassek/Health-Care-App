@@ -7,6 +7,7 @@ import '../../../utils/colors.dart';
 import '../../../utils/dimens.dart';
 import '../../../utils/snackbar_helper.dart';
 import '../../../widgets/custom_text_field.dart';
+import 'package:flutter/services.dart';
 import '../../../widgets/primary_button.dart';
 
 class AddRecordView extends StatefulWidget {
@@ -216,6 +217,7 @@ class _AddRecordViewState extends State<AddRecordView> with SingleTickerProvider
                   keyboardType: TextInputType.number,
                   validator: Validators.validateSteps,
                   enabled: formEnabled,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   helperText: 'Enter steps (0-100,000)',
                 ),
                 const SizedBox(height: Dimens.spacingLarge),
@@ -227,6 +229,7 @@ class _AddRecordViewState extends State<AddRecordView> with SingleTickerProvider
                   keyboardType: TextInputType.number,
                   validator: Validators.validateCalories,
                   enabled: formEnabled,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   helperText: 'Enter calories (0-10,000)',
                 ),
                 const SizedBox(height: Dimens.spacingLarge),
@@ -238,6 +241,7 @@ class _AddRecordViewState extends State<AddRecordView> with SingleTickerProvider
                   keyboardType: TextInputType.number,
                   validator: Validators.validateWater,
                   enabled: formEnabled,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   helperText: 'Minimum 100ml',
                 ),
                 const SizedBox(height: Dimens.spacingXXLarge),

@@ -281,6 +281,7 @@ class _ListViewPageState extends State<ListViewPage> {
           },
           confirmDismiss: (direction) async {
             if (direction == DismissDirection.startToEnd) {
+              // allow edit swipe only for today's record
               if (!_isTodayRecord(record)) {
                 SnackbarHelper.showWarning(
                   context,
@@ -290,16 +291,7 @@ class _ListViewPageState extends State<ListViewPage> {
               }
               return true;
             } else if (direction == DismissDirection.endToStart) {
-              // Deletion allowed only for today's record
-              if (!_isTodayRecord(record)) {
-                if (mounted) {
-                  SnackbarHelper.showWarning(
-                    context,
-                    'Past records are read-only and cannot be deleted.',
-                  );
-                }
-                return false;
-              }
+              // Ask confirmation for deletion for any date
               return await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -385,25 +377,56 @@ class _ListViewPageState extends State<ListViewPage> {
                           ],
                         ],
                       ),
-                      if (_isFiltered && _filterDate == record.date)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha((0.1 * 255).round()),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Match',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
+                      Row(
+                        children: [
+                          if (_isFiltered && _filterDate == record.date)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withAlpha((0.1 * 255).round()),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Match',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          IconButton(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text('Delete Record'),
+                                  content: Text('Delete record for ${record.date}?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c, true),
+                                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) _deleteRecord(record);
+                            },
+                            icon: Icon(
+                              Icons.delete_outline,
+                              color: AppColors.error,
                             ),
                           ),
-                        ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: Dimens.spacingMedium),

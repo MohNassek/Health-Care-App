@@ -127,10 +127,9 @@ class HealthRecordViewModel with ChangeNotifier {
   Future<bool> deleteRecord(int id) async {
     try {
       _error = null;
-      // Allow deletion only for today's record
       final rec = _records.firstWhere((e) => e.id == id, orElse: () => HealthRecord(date: '', steps: 0, calories: 0, water: 0));
-      if (rec.id == null || !_isTodayDate(rec.date)) {
-        _error = 'Only today\'s record can be deleted.';
+      if (rec.id == null) {
+        _error = 'Record not found.';
         notifyListeners();
         return false;
       }
