@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../health_provider.dart';
-import '../health_record.dart';
-import 'add_edit_screen.dart';
+import '../models/health_record.dart';
+import '../viewmodels/health_record_viewmodel.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimens.dart';
-import '../../../utils/snackbar_helper.dart';
 import '../../../widgets/primary_button.dart';
+import '../../../utils/snackbar_helper.dart';
+import 'add_record_view.dart';
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class DashboardView extends StatefulWidget {
+  const DashboardView({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
+class _DashboardViewState extends State<DashboardView> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
 
   @override
@@ -36,7 +36,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    final prov = Provider.of<HealthProvider>(context);
+    final prov = Provider.of<HealthRecordViewModel>(context);
     final summary = prov.getTodaySummary();
     final today = DateTime.now();
     final todayStr = _formatDate(today);
@@ -61,7 +61,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Text(
                 'Today\'s Summary',
                 style: TextStyle(
@@ -80,7 +79,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               ),
               const SizedBox(height: Dimens.spacingXXLarge),
 
-              // Metrics Cards
               if (hasTodayRecord) ...[
                 _buildMetricCard(
                   icon: Icons.directions_walk,
@@ -113,9 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
               const SizedBox(height: Dimens.spacingXXLarge),
 
-              // Action Buttons
               if (hasTodayRecord) ...[
-                // Update Button
                 PrimaryButton(
                   label: 'Update Today\'s Record',
                   icon: Icons.edit,
@@ -123,14 +119,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AddEditScreen(record: todayRecord),
+                        builder: (_) => AddRecordView(record: todayRecord),
                       ),
                     );
                     await prov.loadAll();
                   },
                 ),
                 const SizedBox(height: Dimens.spacingMedium),
-                // Delete Button
                 SizedBox(
                   height: Dimens.buttonHeight,
                   width: double.infinity,
@@ -154,7 +149,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ),
                 ),
               ] else
-                // Add Button (only shown when no record exists)
                 PrimaryButton(
                   label: 'Add Today\'s Record',
                   icon: Icons.add,
@@ -162,12 +156,20 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AddEditScreen(record: null),
+                        builder: (_) => const AddRecordView(record: null),
                       ),
                     );
                     await prov.loadAll();
                   },
                 ),
+              const SizedBox(height: Dimens.spacingMedium),
+              PrimaryButton(
+                label: 'View All Records',
+                icon: Icons.list,
+                onPressed: () async {
+                  await Navigator.pushNamed(context, '/list');
+                },
+              ),
             ],
           ),
         ),
@@ -184,62 +186,62 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     required String unit,
   }) {
     return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Dimens.radiusLarge),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(Dimens.radiusLarge),
+        ),
+        padding: const EdgeInsets.all(Dimens.paddingLarge),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(Dimens.paddingMedium),
+              decoration: BoxDecoration(
+                color: color.withAlpha((0.2 * 255).round()),
+                borderRadius: BorderRadius.circular(Dimens.radiusMedium),
+              ),
+              child: Icon(icon, color: color, size: Dimens.iconLarge),
             ),
-            padding: const EdgeInsets.all(Dimens.paddingLarge),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(Dimens.paddingMedium),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(Dimens.radiusMedium),
+            const SizedBox(width: Dimens.spacingLarge),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  child: Icon(icon, color: color, size: Dimens.iconLarge),
-                ),
-                const SizedBox(width: Dimens.spacingLarge),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
+                  const SizedBox(height: 4),
+                  TweenAnimationBuilder<int>(
+                    tween: IntTween(begin: 0, end: value),
+                    duration: const Duration(milliseconds: 1500),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, animatedValue, child) {
+                      return Text(
+                        '$animatedValue $unit',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: color,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      TweenAnimationBuilder<int>(
-                        tween: IntTween(begin: 0, end: value),
-                        duration: const Duration(milliseconds: 1500),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, animatedValue, child) {
-                          return Text(
-                            '$animatedValue $unit',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -283,7 +285,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Future<void> _deleteTodayRecord(
     BuildContext context,
-    HealthProvider prov,
+    HealthRecordViewModel prov,
     HealthRecord record,
   ) async {
     final confirm = await showDialog<bool>(
@@ -309,6 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
     if (confirm == true && mounted) {
       final success = await prov.deleteRecord(record.id!);
+      if (!mounted) return;
       if (success) {
         SnackbarHelper.showSuccess(context, 'Today\'s record deleted successfully');
       } else {

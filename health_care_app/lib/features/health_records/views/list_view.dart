@@ -1,29 +1,26 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../health_provider.dart';
-import '../health_record.dart';
-import 'add_edit_screen.dart';
+import '../models/health_record.dart';
+import '../viewmodels/health_record_viewmodel.dart';
 import '../../../utils/colors.dart';
 import '../../../utils/dimens.dart';
 import '../../../utils/snackbar_helper.dart';
+// import '../../../widgets/primary_button.dart';
+import 'add_record_view.dart';
 
-class ListScreen extends StatefulWidget {
-  const ListScreen({super.key});
+class ListViewPage extends StatefulWidget {
+  const ListViewPage({super.key});
 
   @override
-  State<ListScreen> createState() => _ListScreenState();
+  State<ListViewPage> createState() => _ListViewPageState();
 }
 
-class _ListScreenState extends State<ListScreen> {
+class _ListViewPageState extends State<ListViewPage> {
   String? _filterDate;
+  List<HealthRecord> _filteredRecords = [];
   Timer? _debounceTimer;
   bool _isFiltered = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   void dispose() {
@@ -50,10 +47,14 @@ class _ListScreenState extends State<ListScreen> {
 
   void _debounceSearch(String date) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      final prov = Provider.of<HealthRecordViewModel>(context, listen: false);
+      final results = await prov.searchByDate(date);
+      if (!mounted) return;
       setState(() {
         _filterDate = date;
         _isFiltered = true;
+        _filteredRecords = results;
       });
     });
   }
@@ -62,6 +63,7 @@ class _ListScreenState extends State<ListScreen> {
     setState(() {
       _filterDate = null;
       _isFiltered = false;
+      _filteredRecords = [];
     });
   }
 
@@ -86,8 +88,9 @@ class _ListScreenState extends State<ListScreen> {
     );
 
     if (ok == true) {
-      final prov = Provider.of<HealthProvider>(context, listen: false);
+      final prov = Provider.of<HealthRecordViewModel>(context, listen: false);
       final success = await prov.deleteRecord(record.id!);
+      if (!mounted) return;
       if (success) {
         SnackbarHelper.showSuccess(context, 'Record deleted successfully');
       } else {
@@ -96,9 +99,6 @@ class _ListScreenState extends State<ListScreen> {
     }
   }
 
-  String _formatDate(DateTime dt) =>
-      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-
   bool _isTodayRecord(HealthRecord record) {
     final today = DateTime.now();
     final todayStr = _formatDate(today);
@@ -106,7 +106,6 @@ class _ListScreenState extends State<ListScreen> {
   }
 
   Future<void> _editRecord(HealthRecord record) async {
-    // Only allow editing today's record
     if (!_isTodayRecord(record)) {
       SnackbarHelper.showWarning(
         context,
@@ -117,19 +116,24 @@ class _ListScreenState extends State<ListScreen> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddEditScreen(record: record)),
+      MaterialPageRoute(builder: (_) => AddRecordView(record: record)),
     );
-    final prov = Provider.of<HealthProvider>(context, listen: false);
+    final prov = Provider.of<HealthRecordViewModel>(context, listen: false);
     await prov.loadAll();
   }
 
+  String _formatDate(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
-    final prov = Provider.of<HealthProvider>(context);
+    final prov = Provider.of<HealthRecordViewModel>(context);
     final allRecords = prov.records;
     final displayRecords = _isFiltered && _filterDate != null
-        ? allRecords.where((r) => r.date == _filterDate).toList()
-        : allRecords;
+      ? _filteredRecords
+      : allRecords;
+    final todayStr = _formatDate(DateTime.now());
+    final hasTodayRecord = prov.records.any((r) => r.date == todayStr);
 
     return Scaffold(
       appBar: AppBar(
@@ -162,12 +166,18 @@ class _ListScreenState extends State<ListScreen> {
                   },
                 ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/add');
-          await prov.loadAll();
-        },
+        onPressed: hasTodayRecord
+            ? null
+            : () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddRecordView()),
+                );
+                await prov.loadAll();
+              },
         icon: const Icon(Icons.add),
-        label: const Text('Add Record'),
+        label: Text(hasTodayRecord ? 'Added Today' : 'Add Record'),
+        tooltip: hasTodayRecord ? 'You already added a record for today' : 'Add a new record',
       ),
     );
   }
@@ -233,7 +243,7 @@ class _ListScreenState extends State<ListScreen> {
           key: Key('record_${record.id}'),
           direction: _isTodayRecord(record)
               ? DismissDirection.horizontal
-              : DismissDirection.endToStart, // Only allow delete swipe for non-today records
+              : DismissDirection.endToStart,
           background: _isTodayRecord(record)
               ? Container(
                   decoration: BoxDecoration(
@@ -271,7 +281,6 @@ class _ListScreenState extends State<ListScreen> {
           },
           confirmDismiss: (direction) async {
             if (direction == DismissDirection.startToEnd) {
-              // Only allow edit swipe for today's record
               if (!_isTodayRecord(record)) {
                 SnackbarHelper.showWarning(
                   context,
@@ -281,6 +290,16 @@ class _ListScreenState extends State<ListScreen> {
               }
               return true;
             } else if (direction == DismissDirection.endToStart) {
+              // Deletion allowed only for today's record
+              if (!_isTodayRecord(record)) {
+                if (mounted) {
+                  SnackbarHelper.showWarning(
+                    context,
+                    'Past records are read-only and cannot be deleted.',
+                  );
+                }
+                return false;
+              }
               return await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -340,7 +359,7 @@ class _ListScreenState extends State<ListScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.success.withOpacity(0.1),
+                                color: AppColors.success.withAlpha((0.1 * 255).round()),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -373,7 +392,7 @@ class _ListScreenState extends State<ListScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withAlpha((0.1 * 255).round()),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
@@ -431,7 +450,7 @@ class _ListScreenState extends State<ListScreen> {
     return Container(
       padding: const EdgeInsets.all(Dimens.paddingSmall),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha((0.1 * 255).round()),
         borderRadius: BorderRadius.circular(Dimens.radiusSmall),
       ),
       child: Column(

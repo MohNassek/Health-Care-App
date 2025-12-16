@@ -1,8 +1,9 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'health_record.dart';
+import 'models/health_record.dart';
+import 'data/health_data_source.dart';
 
-class HealthDatabase {
+class HealthDatabase implements HealthDataSource {
   static final HealthDatabase instance = HealthDatabase._init();
   static Database? _database;
 
@@ -65,6 +66,7 @@ class HealthDatabase {
     }
   }
 
+  @override
   Future<HealthRecord?> getRecordByDate(String date) async {
     final db = await instance.database;
     final res = await db.query(
@@ -77,6 +79,7 @@ class HealthDatabase {
     return HealthRecord.fromMap(res.first);
   }
 
+  @override
   Future<HealthRecord> create(HealthRecord record) async {
     final db = await instance.database;
     try {
@@ -93,18 +96,21 @@ class HealthDatabase {
     }
   }
 
+  @override
   Future<List<HealthRecord>> readAll() async {
     final db = await instance.database;
     final res = await db.query('health_records', orderBy: 'date DESC');
     return res.map((e) => HealthRecord.fromMap(e)).toList();
   }
 
+  @override
   Future<List<HealthRecord>> readByDate(String date) async {
     final db = await instance.database;
     final res = await db.query('health_records', where: 'date = ?', whereArgs: [date]);
     return res.map((e) => HealthRecord.fromMap(e)).toList();
   }
 
+  @override
   Future<int> update(HealthRecord record) async {
     final db = await instance.database;
     try {
@@ -131,11 +137,13 @@ class HealthDatabase {
     }
   }
 
+  @override
   Future<int> delete(int id) async {
     final db = await instance.database;
     return db.delete('health_records', where: 'id = ?', whereArgs: [id]);
   }
 
+  @override
   Future<void> insertDummyDataIfEmpty() async {
     final list = await readAll();
     if (list.isNotEmpty) return;
